@@ -7,7 +7,8 @@ import (
 
 // 16 Register each of them 8 bit
 // 0x00-0xFF
-type Register [16]uint8
+type Registers [16]Register
+type Register uint8
 
 // 16 bit, because max memory address(0xFFF) too big for an 8 bit register
 type IndexRegister uint16
@@ -29,11 +30,13 @@ type SoundTimer uint8
 // 0x050-0x0A0 -> For 16 built-in characters (0 to F)(ROMs will bee looking for these characters)
 // 0x200-0xFFF -> Instructions from the ROM. May not be full
 type Memory [4 * 1024]uint8
+
+// 0x0000
 type OpCode uint16
 
 type CPU struct {
 	//V0-VF
-	Registers      Register
+	Registers      Registers
 	IndexRegister  IndexRegister
 	Memory         Memory
 	ProgramCounter ProgramCounter
@@ -59,108 +62,199 @@ var chip8 = &Chip8{
 var instractionSetOperations = map[OpCode](*func()){}
 
 // Clear the display
-func OP_00E0() {}
+func OP_00E0() {
+	ClearDisplay()
+}
 
 // Return from subroutine
 func OP_00EE() {}
 
-// Jumps to address NNN
-func OP_1NNN() {}
+// Jump to address NNN
+func OP_1NNN() {
+	chip8.Cpu.ProgramCounter = ProgramCounter(chip8.Cpu.OpCode & 0x0FFF)
+}
 
-// Calls subroutine at NNN
+// Call subroutine at NNN
 func OP_2NNN() {}
 
 // Skip the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block)
-func OP_3XNN() {}
+func OP_3XNN() {
+	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	if chip8.Cpu.Registers[registerIndex] == val {
+		chip8.Cpu.ProgramCounter += 2
+	}
+}
 
 // Skip the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).
-func OP_4XNN() {}
+func OP_4XNN() {
+	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	if chip8.Cpu.Registers[registerIndex] != val {
+		chip8.Cpu.ProgramCounter += 2
+	}
+}
 
-// Skips the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block)
-func OP_5XY0() {}
+// Skip the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block)
+func OP_5XY0() {
+	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	if chip8.Cpu.Registers[registerIndex] == val {
+		chip8.Cpu.ProgramCounter += 2
+	}
 
-// Sets VX to NN
-func OP_6XNN() {}
+}
 
-// Adds NN to VX (carry flag is not changed)
-func OP_7XNN() {}
+// Set VX to NN
+func OP_6XNN() {
+	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	chip8.Cpu.Registers[registerIndex] = val
+}
 
-// Sets VX to the value of VY
-func OP_8XY0() {}
+// Add NN to VX (carry flag is not changed)
+func OP_7XNN() {
+	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	chip8.Cpu.Registers[registerIndex] += val
+}
 
-// Sets VX to VX or VY. (bitwise OR operation)
-func OP_8XY1() {}
+// Set VX to the value of VY
+func OP_8XY0() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	chip8.Cpu.Registers[regXIndex] = chip8.Cpu.Registers[regYIndex]
+}
 
-// Sets VX to VX and VY. (bitwise AND operation)
-func OP_8XY2() {}
+// Set VX to VX or VY. (bitwise OR operation)
+func OP_8XY1() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	chip8.Cpu.Registers[regXIndex] |= chip8.Cpu.Registers[regYIndex]
+}
 
-// Sets VX to VX xor VY
-func OP_8XY3() {}
+// Set VX to VX and VY. (bitwise AND operation)
+func OP_8XY2() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	chip8.Cpu.Registers[regXIndex] &= chip8.Cpu.Registers[regYIndex]
+}
 
-// Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there is not
-func OP_8XY4() {}
+// Set VX to VX xor VY
+func OP_8XY3() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	chip8.Cpu.Registers[regXIndex] ^= chip8.Cpu.Registers[regYIndex]
+}
+
+// Add VY to VX. VF is set to 1 when there's a carry, and to 0 when there is not
+func OP_8XY4() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	chip8.Cpu.Registers[regXIndex] ^= chip8.Cpu.Registers[regYIndex]
+}
 
 // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there is not
-func OP_8XY5() {}
+func OP_8XY5() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	//Negative result, set last register to 0
+	if chip8.Cpu.Registers[regXIndex] < chip8.Cpu.Registers[regYIndex] {
+		chip8.Cpu.Registers[0xF] = 0
+	} else {
+		chip8.Cpu.Registers[0xF] = 1
+	}
+	chip8.Cpu.Registers[regXIndex] -= chip8.Cpu.Registers[regYIndex]
+}
 
-// Stores the least significant bit of VX in VF and then shifts VX to the right by 1
-func OP_8XY6() {}
+// Store the least significant bit of VX in VF and then shifts VX to the right by 1
+// Ignore VY like CHIP-48 and SCHIP implementations
+func OP_8XY6() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	lsb := Register(chip8.Cpu.OpCode & 1)
+	chip8.Cpu.Registers[regXIndex] >>= 1
+	chip8.Cpu.Registers[0xF] = lsb
+}
 
-// Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not
-func OP_8XY7() {}
+// Set VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not
+func OP_8XY7() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	//Negative result, set last register to 0
+	if chip8.Cpu.Registers[regYIndex] < chip8.Cpu.Registers[regXIndex] {
+		chip8.Cpu.Registers[0xF] = 0
+	} else {
+		chip8.Cpu.Registers[0xF] = 1
+	}
+	chip8.Cpu.Registers[regXIndex] = chip8.Cpu.Registers[regYIndex] - chip8.Cpu.Registers[regXIndex]
 
-// Stores the most significant bit of VX in VF and then shifts VX to the left by 1
-func OP_8XYE() {}
+}
 
-// Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block)
-func OP_9XY0() {}
+// Store the most significant bit of VX in VF and then shifts VX to the left by 1
+func OP_8XYE() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
 
-// Sets I to the address NNN
-func OP_ANNN() {}
+	chip8.Cpu.Registers[0xF] = chip8.Cpu.Registers[regXIndex] & 0xF0
+	chip8.Cpu.Registers[regXIndex] <<= 1
+}
 
-// Jumps to the address NNN plus V0
+// Skip the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block)
+func OP_9XY0() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	if chip8.Cpu.Registers[regXIndex] != chip8.Cpu.Registers[regYIndex] {
+		chip8.Cpu.ProgramCounter += 2
+	}
+}
+
+// Set I to the address NNN
+func OP_ANNN() {
+
+}
+
+// Jump to the address NNN plus V0
 func OP_BNNN() {}
 
-// Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
+// Set VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
 func OP_CXNN() {}
 
-// Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
+// Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
 func OP_DXYN() {}
 
-// Skips the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
+// Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
 func OP_EX9E() {}
 
-// Skips the next instruction if the key stored in VX is not pressed (usually the next instruction is a jump to skip a code block)
+// Skip the next instruction if the key stored in VX is not pressed (usually the next instruction is a jump to skip a code block)
 func OP_EXA1() {}
 
-// Sets VX to the value of the delay timer
+// Set VX to the value of the delay timer
 func OP_FX07() {}
 
 // A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event)
 func OP_FX0A() {}
 
-// Sets the delay timer to VX
+// Set the delay timer to VX
 func OP_FX15() {}
 
-// Sets the sound timer to VX
+// Set the sound timer to VX
 func OP_FX18() {}
 
-// Adds VX to I. VF is not affected
+// Add VX to I. VF is not affected
 func OP_FX1E() {}
 
-// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
+// Set I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
 func OP_FX29() {}
 
-// Stores the binary-coded decimal representation of VX,
+// Store the binary-coded decimal representation of VX,
 // with the hundreds digit in memory at location in I,
 // the tens digit at location I+1, and the ones digit at location I+2
 func OP_FX33() {}
 
-// Stores from V0 to VX (including VX) in memory, starting at address I
+// Store from V0 to VX (including VX) in memory, starting at address I
 // The offset from I is increased by 1 for each value written, but I itself is left unmodified
 func OP_FX55() {}
 
-// Fills from V0 to VX (including VX) with values from memory, starting at address I.
+// Fill from V0 to VX (including VX) with values from memory, starting at address I.
 // The offset from I is increased by 1 for each value read, but I itself is left unmodified
 func OP_FX65() {}
 
