@@ -39,7 +39,7 @@ type CPU struct {
 	ProgramCounter ProgramCounter
 	ProgramStack   ProgramStack
 	StackPointer   StackPointer
-	// OpCode         OpCode
+	OpCode         OpCode
 }
 type Chip8 struct {
 	Cpu     CPU
@@ -57,19 +57,12 @@ var chip8 = &Chip8{
 	},
 }
 
-func fetch() OpCode {
-	opCode := OpCode(0xffff)
-	return opCode
-
+func fetch() {
+	//01010101 00000000 | 00000000 10101010
+	chip8.Cpu.OpCode = OpCode(uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter])<<8 | uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter+1]))
 }
-func decode(opCode OpCode) func() {
-	return func() {
-		log.Print("Decode!")
-	}
-
-}
-func execute(command func()) {
-	command()
+func decodeAndExecute() {
+	//chip8.Cpu.OpCode
 }
 func halt(e error) {
 	panic(e)
@@ -98,18 +91,22 @@ func loadFonts() {
 	log.Print("Fontset loaded successfully!")
 
 }
+func initSystem() {
+	loadFonts()
+	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
+	chip8.Cpu.OpCode = OpCode(0)
+}
 func Boot(romPath string) {
 	err := loadRom(romPath)
 	if err != nil {
 		halt(err)
 	}
-	loadFonts()
+	initSystem()
 	loop()
 }
 func loop() {
 	for true {
-		opCode := fetch()
-		command := decode(opCode)
-		execute(command)
+		fetch()
+		decodeAndExecute()
 	}
 }
