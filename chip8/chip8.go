@@ -367,7 +367,8 @@ func halt(e error) {
 }
 
 func checkRomSize(romData *[]byte) error {
-	if len(*romData)-int(START_ADDRESS)-len(chip8.Cpu.Memory) < 0 {
+	log.Println("Rom size:", len(*romData), "byte")
+	if int(START_ADDRESS)+len(chip8.Cpu.Memory)+len(*romData) < 0 {
 		return errors.New("Rom is too large to fit into memory!")
 	}
 	return nil
@@ -391,6 +392,7 @@ func loadFonts() {
 
 }
 func Boot(romPath string, displayScale uint8, speed uint8) {
+	log.SetFlags(0)
 	err := loadRom(romPath)
 	if err != nil {
 		halt(err)
