@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"time"
 )
 
 // 16 Register each of them 8 bit
@@ -51,6 +52,7 @@ type Chip8 struct {
 	KeyPad     KeyPad
 	DelayTimer DelayTimer
 	SoundTimer SoundTimer
+	Speed      uint8
 }
 
 const START_ADDRESS = uint16(0x200)
@@ -392,7 +394,7 @@ func loadFonts() {
 
 }
 func Boot(romPath string, displayScale uint8, speed uint8) {
-	log.SetFlags(0)
+	log.SetFlags(4)
 	err := loadRom(romPath)
 	if err != nil {
 		halt(err)
@@ -400,17 +402,27 @@ func Boot(romPath string, displayScale uint8, speed uint8) {
 	loadFonts()
 	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
 	chip8.Cpu.OpCode = OpCode(0)
+	chip8.Speed = speed
 	DisplayScale = displayScale
 	loop()
 }
 func loop() {
+	start := time.Now()
 	for true {
-		cycle()
+		if time.Since(start).Milliseconds() >= int64(chip8.Speed) {
+			log.Print("Running...")
+			cycle()
+			start = time.Now()
+		}
 	}
 }
 func cycle() {
 	fetch()
-	chip8.Cpu.ProgramCounter += 2
+	if chip8.Cpu.ProgramCounter+2 < ProgramCounter(len(chip8.Cpu.Memory)) {
+		chip8.Cpu.ProgramCounter += 2
+	} else {
+		log.Fatal("Reached to end of memory!!!")
+	}
 	decodeAndExecute()
 	if chip8.DelayTimer > 0 {
 		chip8.DelayTimer -= 1
