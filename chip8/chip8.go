@@ -64,9 +64,10 @@ var chip8 = &Chip8{
 		ProgramCounter: ProgramCounter(START_ADDRESS),
 	},
 }
+
 /*
 ****Opcodes****
-00E0 00EE (0NNN) -> not necessary for most roms
+00E0 00EE (0NNN)-> not necessary for most roms
 1NNN
 2NNN
 3XNN
@@ -81,14 +82,9 @@ BNNN
 CXNN
 DXYN
 EX9E EXA1
-FX07 FX0A
-FX15 FX18 FX1E
-FX29
-FX33
-FX55
-FX65
+FX07 FX0A FX15 FX18 FX1E FX29 FX33 FX55 FX65
 */
-var opcodeTable = map[Opcode](*func()){ }
+var opcodeTable = map[Opcode](*func()){}
 
 // Clear the display
 func OP_00E0() {
@@ -387,6 +383,96 @@ func fetch() {
 	log.Print("Fetched Opcode:", chip8.Cpu.Opcode)
 }
 func decodeAndExecute() {
+	opcode := chip8.Cpu.Opcode
+	firstNum := uint8((opcode & 0xF000) >> 12)
+	// secondNum := uint8((opcode & 0x0F00) >> 8)
+	// secondAndLastNum := uint8(((opcode & 0x0F00) >> 4) & (opcode & 0x000F))
+	lastTwoNum := uint8((opcode & 0x00F0) & (opcode & 0x000F))
+	lastNum := uint8(opcode & 0x000F)
+	switch firstNum {
+	case 0x0: // 00E0 00EE
+		switch lastNum {
+		case 0x0: //00E0
+			OP_00E0()
+		case 0xE: //00EE
+			OP_00EE()
+		}
+	case 0x1: // 1NNN
+		OP_1NNN()
+	case 0x2: // 2NNN
+		OP_2NNN()
+	case 0x3: // 3XNN
+		OP_3XNN()
+	case 0x4: // 4XNN
+		OP_4XNN()
+	case 0x5: // 5XY0
+		OP_5XY0()
+	case 0x6: // 6XNN
+		OP_6XNN()
+	case 0x7: // 7XNN
+		OP_7XNN()
+	case 0x8: // 8XY0 8XY1 8XY2 8XY3 8XY4 8XY5 8XY6 8XY7 8XYE
+		switch lastNum {
+		case 0x0: //8XY0
+			OP_8XY0()
+		case 0x1: //8XY1
+			OP_8XY1()
+		case 0x2: //8XY2
+			OP_8XY2()
+		case 0x3: //8XY3
+			OP_8XY3()
+		case 0x4: //8XY4
+			OP_8XY4()
+		case 0x5: //8XY5
+			OP_8XY5()
+		case 0x6: //8XY6
+			OP_8XY6()
+		case 0x7: //8XY7
+			OP_8XY7()
+		case 0xE: //8XYE
+			OP_8XYE()
+		}
+	case 0x9: // 9XY0
+		OP_9XY0()
+	case 0xA: // ANNN
+		OP_ANNN()
+	case 0xB: // BNNN
+		OP_BNNN()
+	case 0xC: // CXNN
+		OP_CXNN()
+	case 0xD: // DXYN
+		OP_DXYN()
+	case 0xE: //EX9E EXA1
+		switch lastTwoNum {
+		case 0x9E: // EX9E
+			OP_EX9E()
+		case 0xA1: //  EXA1
+			OP_EXA1()
+		}
+	case 0xF: // FX07 FX0A FX15 FX18 FX1E FX29 FX33 FX55 FX65
+		switch lastTwoNum {
+		case 0x07: //FX07
+			OP_FX07()
+		case 0x0A: //FX0A
+			OP_FX0A()
+		case 0x15: //FX15
+			OP_FX15()
+		case 0x18: //FX18
+			OP_FX18()
+		case 0x1E: //FX1E
+			OP_FX1E()
+		case 0x29: //FX29
+			OP_FX29()
+		case 0x33: //FX33
+			OP_FX33()
+		case 0x55: //FX55
+			OP_FX55()
+		case 0x65: //FX65
+			OP_FX65()
+
+		}
+
+	}
 }
 func halt(e error) {
 	panic(e)
