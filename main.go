@@ -5,5 +5,5 @@ import(
 )
 
 func main() {
-    chip8.Boot("./roms")
+    chip8.Boot("./roms", 10, 5)
 }

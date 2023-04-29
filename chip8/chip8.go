@@ -390,22 +390,30 @@ func loadFonts() {
 	log.Print("Fontset loaded successfully!")
 
 }
-func initSystem() {
-	loadFonts()
-	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
-	chip8.Cpu.OpCode = OpCode(0)
-}
-func Boot(romPath string) {
+func Boot(romPath string, displayScale uint8, speed uint8) {
 	err := loadRom(romPath)
 	if err != nil {
 		halt(err)
 	}
-	initSystem()
+	loadFonts()
+	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
+	chip8.Cpu.OpCode = OpCode(0)
+	DisplayScale = displayScale
 	loop()
 }
 func loop() {
 	for true {
-		fetch()
-		decodeAndExecute()
+		cycle()
+	}
+}
+func cycle() {
+	fetch()
+	chip8.Cpu.ProgramCounter += 2
+	decodeAndExecute()
+	if chip8.DelayTimer > 0 {
+		chip8.DelayTimer -= 1
+	}
+	if chip8.SoundTimer > 0 {
+		chip8.SoundTimer -= 1
 	}
 }
