@@ -3,6 +3,7 @@ package chip8
 import (
 	"errors"
 	"log"
+	"math/rand"
 )
 
 // 16 Register each of them 8 bit
@@ -45,9 +46,11 @@ type CPU struct {
 	OpCode         OpCode
 }
 type Chip8 struct {
-	Cpu     CPU
-	Display Display
-	KeyMap  KeyMap
+	Cpu        CPU
+	Display    Display
+	KeyPad     KeyPad
+	DelayTimer DelayTimer
+	SoundTimer SoundTimer
 }
 
 const START_ADDRESS = uint16(0x200)
@@ -209,41 +212,97 @@ func OP_9XY0() {
 
 // Set I to the address NNN
 func OP_ANNN() {
-
+	chip8.Cpu.IndexRegister = IndexRegister(chip8.Cpu.OpCode & 0x0FFF)
 }
 
 // Jump to the address NNN plus V0
-func OP_BNNN() {}
+func OP_BNNN() {
+	address := chip8.Cpu.OpCode & 0x0FFF
+	chip8.Cpu.ProgramCounter = ProgramCounter(address + OpCode(chip8.Cpu.Registers[0]))
+}
 
 // Set VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
-func OP_CXNN() {}
+func OP_CXNN() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	chip8.Cpu.Registers[regXIndex] = Register((chip8.Cpu.OpCode & 0x00FF) & OpCode(rand.Intn(256)))
+}
 
 // Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
-func OP_DXYN() {}
+func OP_DXYN() { //TODO
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	pixelNum := chip8.Cpu.OpCode & 0x000F
+	//TODO
+	Draw(uint8(chip8.Cpu.Registers[regXIndex]), uint8(chip8.Cpu.Registers[regYIndex]), uint8(pixelNum))
+}
 
 // Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
-func OP_EX9E() {}
+func OP_EX9E() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	key := uint8(chip8.Cpu.Registers[regXIndex])
+	//Key pressed
+	if chip8.KeyPad[key] {
+		chip8.Cpu.ProgramCounter += 2
+	}
+}
 
 // Skip the next instruction if the key stored in VX is not pressed (usually the next instruction is a jump to skip a code block)
-func OP_EXA1() {}
+func OP_EXA1() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	key := uint8(chip8.Cpu.Registers[regXIndex])
+	//Key not pressed
+	if !chip8.KeyPad[key] {
+		chip8.Cpu.ProgramCounter += 2
+	}
+}
 
 // Set VX to the value of the delay timer
-func OP_FX07() {}
+func OP_FX07() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	chip8.Cpu.Registers[regXIndex] = Register(chip8.DelayTimer)
+}
 
 // A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event)
-func OP_FX0A() {}
+func OP_FX0A() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	//Wait for key press
+	waitKeyPress := true
+	for i, key := range chip8.KeyPad {
+		if key {
+			chip8.Cpu.Registers[regXIndex] = Register(i)
+			waitKeyPress = false
+			break
+		}
+	}
+	if waitKeyPress {
+		chip8.Cpu.ProgramCounter -= 1
+	}
+}
 
 // Set the delay timer to VX
-func OP_FX15() {}
+func OP_FX15() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	chip8.DelayTimer = DelayTimer(chip8.Cpu.Registers[regXIndex])
+}
 
 // Set the sound timer to VX
-func OP_FX18() {}
+func OP_FX18() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	chip8.SoundTimer = SoundTimer(chip8.Cpu.Registers[regXIndex])
+}
 
 // Add VX to I. VF is not affected
-func OP_FX1E() {}
+func OP_FX1E() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	chip8.Cpu.IndexRegister += IndexRegister(chip8.Cpu.Registers[regXIndex])
+}
 
 // Set I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
-func OP_FX29() {}
+func OP_FX29() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	fontLocation := FONTSET_START_ADDRESS + uint16(chip8.Cpu.Registers[regXIndex]*5)
+	chip8.Cpu.IndexRegister = IndexRegister(fontLocation)
+}
 
 // Store the binary-coded decimal representation of VX,
 // with the hundreds digit in memory at location in I,

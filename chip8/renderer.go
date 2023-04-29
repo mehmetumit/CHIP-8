@@ -7,3 +7,6 @@ type Display [64 * 32]uint8
 func ClearDisplay(){
 
 }
+func Draw(x uint8 , y uint8, n uint8){
+
+}
