@@ -1,5 +1,9 @@
 package chip8
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+	"log"
+)
 type KeyMap map[uint8]uint8
 //0x0 to 0xF -> store pressed or not
 type KeyPad [16]bool
@@ -26,4 +30,16 @@ var keyMap = KeyMap{
 
 func GetKeymap() KeyMap {
 	return keyMap
+}
+func EventHandler(quitEvent func()) {
+	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch event.(type) {
+		case *sdl.QuitEvent:
+			log.Print("Quit Event Handled")
+			Window.Destroy()
+			sdl.Quit()
+			quitEvent()
+			break
+		}
+	}
 }

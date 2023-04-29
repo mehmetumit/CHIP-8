@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -261,7 +262,12 @@ func OP_CXNN() {
 }
 
 // Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
-// TODO
+
+/*Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
+of N pixels. Each row of 8 pixels is read as bit-coded starting from memory
+location I; I value does not change after the execution of this instruction.
+As described above, VF is set to 1 if any screen pixels are flipped from set to
+unset when the sprite is drawn, and to 0 if that does not happen*/
 func OP_DXYN() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
@@ -474,8 +480,9 @@ func decodeAndExecute() {
 
 	}
 }
-func halt(e error) {
-	panic(e)
+func halt() {
+	log.Print("Halting...")
+	os.Exit(1)
 }
 
 func checkRomSize(romData *[]byte) error {
@@ -507,13 +514,14 @@ func Boot(romPath string, displayScale uint8, speed uint8) {
 	log.SetFlags(4)
 	err := loadRom(romPath)
 	if err != nil {
-		halt(err)
+		panic(err)
 	}
 	loadFonts()
 	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
 	chip8.Cpu.Opcode = Opcode(0)
 	chip8.Speed = speed
 	DisplayScale = displayScale
+	StartDisplay()
 	loop()
 }
 func loop() {
@@ -523,6 +531,7 @@ func loop() {
 			log.Print("Running...")
 			cycle()
 			start = time.Now()
+			EventHandler(halt)
 		}
 	}
 }
