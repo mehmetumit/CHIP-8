@@ -34,7 +34,7 @@ type SoundTimer uint8
 type Memory [4 * 1024]uint8
 
 // 0x0000
-type OpCode uint16
+type Opcode uint16
 
 type CPU struct {
 	//V0-VF
@@ -44,7 +44,7 @@ type CPU struct {
 	ProgramCounter ProgramCounter
 	ProgramStack   ProgramStack
 	StackPointer   StackPointer
-	OpCode         OpCode
+	Opcode         Opcode
 }
 type Chip8 struct {
 	Cpu        CPU
@@ -64,7 +64,31 @@ var chip8 = &Chip8{
 		ProgramCounter: ProgramCounter(START_ADDRESS),
 	},
 }
-var instractionSetOperations = map[OpCode](*func()){}
+/*
+****Opcodes****
+00E0 00EE (0NNN) -> not necessary for most roms
+1NNN
+2NNN
+3XNN
+4XNN
+5XY0
+6XNN
+7XNN
+8XY0 8XY1 8XY2 8XY3 8XY4 8XY5 8XY6 8XY7 8XYE
+9XY0
+ANNN
+BNNN
+CXNN
+DXYN
+EX9E EXA1
+FX07 FX0A
+FX15 FX18 FX1E
+FX29
+FX33
+FX55
+FX65
+*/
+var opcodeTable = map[Opcode](*func()){ }
 
 // Clear the display
 func OP_00E0() {
@@ -80,12 +104,12 @@ func OP_00EE() {
 
 // Jump to address NNN
 func OP_1NNN() {
-	chip8.Cpu.ProgramCounter = ProgramCounter(chip8.Cpu.OpCode & 0x0FFF)
+	chip8.Cpu.ProgramCounter = ProgramCounter(chip8.Cpu.Opcode & 0x0FFF)
 }
 
 // Call subroutine at NNN
 func OP_2NNN() {
-	address := (chip8.Cpu.OpCode & 0x0FFF)
+	address := (chip8.Cpu.Opcode & 0x0FFF)
 	//Save state in stack
 	chip8.Cpu.ProgramStack[chip8.Cpu.StackPointer] = chip8.Cpu.ProgramCounter
 	chip8.Cpu.StackPointer += 1
@@ -96,8 +120,8 @@ func OP_2NNN() {
 
 // Skip the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block)
 func OP_3XNN() {
-	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	registerIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.Opcode & 0x00FF)
 	if chip8.Cpu.Registers[registerIndex] == val {
 		chip8.Cpu.ProgramCounter += 2
 	}
@@ -105,8 +129,8 @@ func OP_3XNN() {
 
 // Skip the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).
 func OP_4XNN() {
-	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	registerIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.Opcode & 0x00FF)
 	if chip8.Cpu.Registers[registerIndex] != val {
 		chip8.Cpu.ProgramCounter += 2
 	}
@@ -114,8 +138,8 @@ func OP_4XNN() {
 
 // Skip the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block)
 func OP_5XY0() {
-	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	registerIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.Opcode & 0x00FF)
 	if chip8.Cpu.Registers[registerIndex] == val {
 		chip8.Cpu.ProgramCounter += 2
 	}
@@ -123,57 +147,57 @@ func OP_5XY0() {
 
 // Set VX to NN
 func OP_6XNN() {
-	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	registerIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.Opcode & 0x00FF)
 	chip8.Cpu.Registers[registerIndex] = val
 }
 
 // Add NN to VX (carry flag is not changed)
 func OP_7XNN() {
-	registerIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	val := Register(chip8.Cpu.OpCode & 0x00FF)
+	registerIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	val := Register(chip8.Cpu.Opcode & 0x00FF)
 	chip8.Cpu.Registers[registerIndex] += val
 }
 
 // Set VX to the value of VY
 func OP_8XY0() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	chip8.Cpu.Registers[regXIndex] = chip8.Cpu.Registers[regYIndex]
 }
 
 // Set VX to VX or VY. (bitwise OR operation)
 func OP_8XY1() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	chip8.Cpu.Registers[regXIndex] |= chip8.Cpu.Registers[regYIndex]
 }
 
 // Set VX to VX and VY. (bitwise AND operation)
 func OP_8XY2() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	chip8.Cpu.Registers[regXIndex] &= chip8.Cpu.Registers[regYIndex]
 }
 
 // Set VX to VX xor VY
 func OP_8XY3() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	chip8.Cpu.Registers[regXIndex] ^= chip8.Cpu.Registers[regYIndex]
 }
 
 // Add VY to VX. VF is set to 1 when there's a carry, and to 0 when there is not
 func OP_8XY4() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	chip8.Cpu.Registers[regXIndex] ^= chip8.Cpu.Registers[regYIndex]
 }
 
 // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there is not
 func OP_8XY5() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	//Negative result, set last register to 0
 	if chip8.Cpu.Registers[regXIndex] < chip8.Cpu.Registers[regYIndex] {
 		chip8.Cpu.Registers[0xF] = 0
@@ -186,16 +210,16 @@ func OP_8XY5() {
 // Store the least significant bit of VX in VF and then shifts VX to the right by 1
 // Ignore VY like CHIP-48 and SCHIP implementations
 func OP_8XY6() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	lsb := Register(chip8.Cpu.OpCode & 1)
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	lsb := Register(chip8.Cpu.Opcode & 1)
 	chip8.Cpu.Registers[regXIndex] >>= 1
 	chip8.Cpu.Registers[0xF] = lsb
 }
 
 // Set VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not
 func OP_8XY7() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	//Negative result, set last register to 0
 	if chip8.Cpu.Registers[regYIndex] < chip8.Cpu.Registers[regXIndex] {
 		chip8.Cpu.Registers[0xF] = 0
@@ -208,7 +232,7 @@ func OP_8XY7() {
 
 // Store the most significant bit of VX in VF and then shifts VX to the left by 1
 func OP_8XYE() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 
 	chip8.Cpu.Registers[0xF] = chip8.Cpu.Registers[regXIndex] & 0xF0
 	chip8.Cpu.Registers[regXIndex] <<= 1
@@ -216,8 +240,8 @@ func OP_8XYE() {
 
 // Skip the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block)
 func OP_9XY0() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	if chip8.Cpu.Registers[regXIndex] != chip8.Cpu.Registers[regYIndex] {
 		chip8.Cpu.ProgramCounter += 2
 	}
@@ -225,34 +249,34 @@ func OP_9XY0() {
 
 // Set I to the address NNN
 func OP_ANNN() {
-	chip8.Cpu.IndexRegister = IndexRegister(chip8.Cpu.OpCode & 0x0FFF)
+	chip8.Cpu.IndexRegister = IndexRegister(chip8.Cpu.Opcode & 0x0FFF)
 }
 
 // Jump to the address NNN plus V0
 func OP_BNNN() {
-	address := chip8.Cpu.OpCode & 0x0FFF
-	chip8.Cpu.ProgramCounter = ProgramCounter(address + OpCode(chip8.Cpu.Registers[0]))
+	address := chip8.Cpu.Opcode & 0x0FFF
+	chip8.Cpu.ProgramCounter = ProgramCounter(address + Opcode(chip8.Cpu.Registers[0]))
 }
 
 // Set VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
 func OP_CXNN() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	chip8.Cpu.Registers[regXIndex] = Register((chip8.Cpu.OpCode & 0x00FF) & OpCode(rand.Intn(256)))
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	chip8.Cpu.Registers[regXIndex] = Register((chip8.Cpu.Opcode & 0x00FF) & Opcode(rand.Intn(256)))
 }
 
 // Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
 // TODO
 func OP_DXYN() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
-	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
-	pixelNum := chip8.Cpu.OpCode & 0x000F
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
+	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
+	pixelNum := chip8.Cpu.Opcode & 0x000F
 	//TODO
 	Draw(uint8(chip8.Cpu.Registers[regXIndex]), uint8(chip8.Cpu.Registers[regYIndex]), uint8(pixelNum))
 }
 
 // Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
 func OP_EX9E() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	key := uint8(chip8.Cpu.Registers[regXIndex])
 	//Key pressed
 	if chip8.KeyPad[key] {
@@ -262,7 +286,7 @@ func OP_EX9E() {
 
 // Skip the next instruction if the key stored in VX is not pressed (usually the next instruction is a jump to skip a code block)
 func OP_EXA1() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	key := uint8(chip8.Cpu.Registers[regXIndex])
 	//Key not pressed
 	if !chip8.KeyPad[key] {
@@ -272,13 +296,13 @@ func OP_EXA1() {
 
 // Set VX to the value of the delay timer
 func OP_FX07() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	chip8.Cpu.Registers[regXIndex] = Register(chip8.DelayTimer)
 }
 
 // A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event)
 func OP_FX0A() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	//Wait for key press
 	waitKeyPress := true
 	for i, key := range chip8.KeyPad {
@@ -296,25 +320,25 @@ func OP_FX0A() {
 
 // Set the delay timer to VX
 func OP_FX15() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	chip8.DelayTimer = DelayTimer(chip8.Cpu.Registers[regXIndex])
 }
 
 // Set the sound timer to VX
 func OP_FX18() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	chip8.SoundTimer = SoundTimer(chip8.Cpu.Registers[regXIndex])
 }
 
 // Add VX to I. VF is not affected
 func OP_FX1E() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	chip8.Cpu.IndexRegister += IndexRegister(chip8.Cpu.Registers[regXIndex])
 }
 
 // Set I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
 func OP_FX29() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	fontLocation := FONTSET_START_ADDRESS + uint16(chip8.Cpu.Registers[regXIndex]*5)
 	chip8.Cpu.IndexRegister = IndexRegister(fontLocation)
 }
@@ -323,7 +347,7 @@ func OP_FX29() {
 // with the hundreds digit in memory at location in I,
 // the tens digit at location I+1, and the ones digit at location I+2
 func OP_FX33() {
-	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	num := uint8(chip8.Cpu.Registers[regXIndex])
 	//255 -> 0010 0101 0101
 	//Ones
@@ -341,7 +365,7 @@ func OP_FX33() {
 // The offset from I is increased by 1 for each value written, but I itself is left unmodified
 func OP_FX55() {
 	startAddress := chip8.Cpu.IndexRegister
-	regXIndex := uint8((chip8.Cpu.OpCode & 0x0F00) >> 8)
+	regXIndex := uint8((chip8.Cpu.Opcode & 0x0F00) >> 8)
 	for i := uint8(0); i <= regXIndex; i++ {
 		chip8.Cpu.Memory[startAddress+IndexRegister(i)] = uint8(chip8.Cpu.Registers[i])
 	}
@@ -351,18 +375,18 @@ func OP_FX55() {
 // The offset from I is increased by 1 for each value read, but I itself is left unmodified
 func OP_FX65() {
 	startAddress := chip8.Cpu.IndexRegister
-	regXIndex := uint8((chip8.Cpu.OpCode & 0x0F00) >> 8)
+	regXIndex := uint8((chip8.Cpu.Opcode & 0x0F00) >> 8)
 	for i := uint8(0); i <= regXIndex; i++ {
 		chip8.Cpu.Registers[i] = Register(chip8.Cpu.Memory[startAddress+IndexRegister(i)])
 	}
 }
 
 func fetch() {
-	//01010101 00000000 | 00000000 10101010 -> OpCode is 2 byte
-	chip8.Cpu.OpCode = OpCode(uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter])<<8 | uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter+1]))
+	//01010101 00000000 | 00000000 10101010 -> Opcodes are 2 byte each
+	chip8.Cpu.Opcode = Opcode(uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter])<<8 | uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter+1]))
+	log.Print("Fetched Opcode:", chip8.Cpu.Opcode)
 }
 func decodeAndExecute() {
-	//chip8.Cpu.OpCode
 }
 func halt(e error) {
 	panic(e)
@@ -401,7 +425,7 @@ func Boot(romPath string, displayScale uint8, speed uint8) {
 	}
 	loadFonts()
 	chip8.Cpu.ProgramCounter = ProgramCounter(START_ADDRESS)
-	chip8.Cpu.OpCode = OpCode(0)
+	chip8.Cpu.Opcode = Opcode(0)
 	chip8.Speed = speed
 	DisplayScale = displayScale
 	loop()
