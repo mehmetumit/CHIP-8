@@ -70,7 +70,11 @@ func OP_00E0() {
 }
 
 // Return from subroutine
-func OP_00EE() {}
+func OP_00EE() {
+	chip8.Cpu.StackPointer -= 1
+	//Return
+	chip8.Cpu.ProgramCounter = chip8.Cpu.ProgramStack[chip8.Cpu.StackPointer]
+}
 
 // Jump to address NNN
 func OP_1NNN() {
@@ -78,7 +82,15 @@ func OP_1NNN() {
 }
 
 // Call subroutine at NNN
-func OP_2NNN() {}
+func OP_2NNN() {
+	address := (chip8.Cpu.OpCode & 0x0FFF)
+	//Save state in stack
+	chip8.Cpu.ProgramStack[chip8.Cpu.StackPointer] = chip8.Cpu.ProgramCounter
+	chip8.Cpu.StackPointer += 1
+
+	//Call
+	chip8.Cpu.ProgramCounter = ProgramCounter(address)
+}
 
 // Skip the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block)
 func OP_3XNN() {
@@ -105,7 +117,6 @@ func OP_5XY0() {
 	if chip8.Cpu.Registers[registerIndex] == val {
 		chip8.Cpu.ProgramCounter += 2
 	}
-
 }
 
 // Set VX to NN
@@ -228,7 +239,8 @@ func OP_CXNN() {
 }
 
 // Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
-func OP_DXYN() { //TODO
+// TODO
+func OP_DXYN() {
 	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
 	regYIndex := (chip8.Cpu.OpCode & 0x00F0) >> 4
 	pixelNum := chip8.Cpu.OpCode & 0x000F
@@ -274,8 +286,9 @@ func OP_FX0A() {
 			break
 		}
 	}
+	//One cycle is 2
 	if waitKeyPress {
-		chip8.Cpu.ProgramCounter -= 1
+		chip8.Cpu.ProgramCounter -= 2
 	}
 }
 
@@ -304,18 +317,43 @@ func OP_FX29() {
 	chip8.Cpu.IndexRegister = IndexRegister(fontLocation)
 }
 
-// Store the binary-coded decimal representation of VX,
+// Store the binary-coded decimal(BCD) representation of VX,
 // with the hundreds digit in memory at location in I,
 // the tens digit at location I+1, and the ones digit at location I+2
-func OP_FX33() {}
+func OP_FX33() {
+	regXIndex := (chip8.Cpu.OpCode & 0x0F00) >> 8
+	num := uint8(chip8.Cpu.Registers[regXIndex])
+	//255 -> 0010 0101 0101
+	//Ones
+	chip8.Cpu.Memory[chip8.Cpu.IndexRegister+2] = num % 10
+	num /= 10
+	//Tens
+	chip8.Cpu.Memory[chip8.Cpu.IndexRegister+1] = num % 10
+	num /= 10
+	//Hundreds
+	chip8.Cpu.Memory[chip8.Cpu.IndexRegister] = num % 10
+	num /= 10
+}
 
 // Store from V0 to VX (including VX) in memory, starting at address I
 // The offset from I is increased by 1 for each value written, but I itself is left unmodified
-func OP_FX55() {}
+func OP_FX55() {
+	startAddress := chip8.Cpu.IndexRegister
+	regXIndex := uint8((chip8.Cpu.OpCode & 0x0F00) >> 8)
+	for i := uint8(0); i <= regXIndex; i++ {
+		chip8.Cpu.Memory[startAddress+IndexRegister(i)] = uint8(chip8.Cpu.Registers[i])
+	}
+}
 
 // Fill from V0 to VX (including VX) with values from memory, starting at address I.
 // The offset from I is increased by 1 for each value read, but I itself is left unmodified
-func OP_FX65() {}
+func OP_FX65() {
+	startAddress := chip8.Cpu.IndexRegister
+	regXIndex := uint8((chip8.Cpu.OpCode & 0x0F00) >> 8)
+	for i := uint8(0); i <= regXIndex; i++ {
+		chip8.Cpu.Registers[i] = Register(chip8.Cpu.Memory[startAddress+IndexRegister(i)])
+	}
+}
 
 func fetch() {
 	//01010101 00000000 | 00000000 10101010 -> OpCode is 2 byte
@@ -340,6 +378,7 @@ func loadRom(filePath string) error {
 	if err == nil {
 		err = checkRomSize(&romData)
 		if err == nil {
+			//Push rom into memory
 			copy(chip8.Cpu.Memory[START_ADDRESS:], romData)
 			log.Printf(`%v rom loaded successfully!`, filePath)
 		}
