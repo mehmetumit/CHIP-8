@@ -284,20 +284,28 @@ func OP_DXYN() {
 	startAddress := chip8.Cpu.IndexRegister
 	posX := uint8(chip8.Cpu.Registers[regXIndex])
 	posY := uint8(chip8.Cpu.Registers[regYIndex])
+	isFlipped := uint8(0)
+	chip8.Cpu.Registers[0xF] = 0
 	//Iterate over sprite in memory
 	for i := uint8(0); i < uint8(pixelNum); i++ {
 		//8 pixel loaded
 		pixelBits := chip8.Cpu.Memory[uint16(startAddress)+uint16(i)]
 		log.Printf("Pixel bits: 0x%X", pixelBits)
 		for j := uint8(0); j < 8; j++ {
-			//
+			//Get left most bit
 			bit := uint8((pixelBits & 0x80) >> 7)
+			//Pixel bit flipped
+			if bit^chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] == 1 {
+				isFlipped = 1
+			}
+			//Prevent overflow
 			chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] = bit
 			pixelBits = pixelBits << 1
 			log.Printf("Bit: 0x%X", bit)
 			log.Printf("Pixel bits in loop: 0x%X", pixelBits)
 		}
 	}
+	chip8.Cpu.Registers[0xF] = Register(isFlipped)
 }
 
 // Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
@@ -369,9 +377,11 @@ func OP_FX29() {
 	chip8.Cpu.IndexRegister = IndexRegister(fontLocation)
 }
 
-// Store the binary-coded decimal(BCD) representation of VX,
-// with the hundreds digit in memory at location in I,
-// the tens digit at location I+1, and the ones digit at location I+2
+/*
+Store the binary-coded decimal(BCD) representation of VX,
+with the hundreds digit in memory at location in I,
+the tens digit at location I+1, and the ones digit at location I+2
+*/
 func OP_FX33() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	num := uint8(chip8.Cpu.Registers[regXIndex])
@@ -415,9 +425,7 @@ func fetch() {
 func decodeAndExecute() {
 	opcode := chip8.Cpu.Opcode
 	firstNum := uint8((opcode & 0xF000) >> 12)
-	// secondNum := uint8((opcode & 0x0F00) >> 8)
-	// secondAndLastNum := uint8(((opcode & 0x0F00) >> 4) & (opcode & 0x000F))
-	lastTwoNum := uint8((opcode & 0x00F0) & (opcode & 0x000F))
+	lastTwoNum := uint8((opcode & 0x00F0) | (opcode & 0x000F))
 	lastNum := uint8(opcode & 0x000F)
 	switch firstNum {
 	case 0x0: // 00E0 00EE
@@ -515,7 +523,6 @@ func checkRomSize(romData *[]byte) error {
 		return errors.New("Rom is too large to fit into memory!")
 	}
 	return nil
-
 }
 func loadRom(filePath string) error {
 	romData, err := ReadFile(filePath)
