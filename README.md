@@ -2,6 +2,7 @@
 * CHIP-8 emulator written in go
 ## References
 * https://en.wikipedia.org/wiki/CHIP-8
+* https://www.cs.columbia.edu/~sedwards/classes/2016/4840-spring/designs/Chip8.pdf
 ## Opcodes
 ```
 00E0 00EE (0NNN)-> not necessary for most roms

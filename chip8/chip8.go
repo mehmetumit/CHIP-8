@@ -188,7 +188,15 @@ func OP_8XY3() {
 func OP_8XY4() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
-	chip8.Cpu.Registers[regXIndex] ^= chip8.Cpu.Registers[regYIndex]
+	newRegX := chip8.Cpu.Registers[regXIndex] + chip8.Cpu.Registers[regYIndex]
+	//Overflow detection
+	if newRegX < chip8.Cpu.Registers[regXIndex] {
+		chip8.Cpu.Registers[0xF] = 1
+	} else {
+		chip8.Cpu.Registers[0xF] = 0
+	}
+	//Set register X
+	chip8.Cpu.Registers[regXIndex] = newRegX
 }
 
 // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there is not
@@ -261,10 +269,8 @@ func OP_CXNN() {
 	chip8.Cpu.Registers[regXIndex] = Register((chip8.Cpu.Opcode & 0x00FF) & Opcode(rand.Intn(256)))
 }
 
-// Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
-
 /*
-Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
+Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
 of N pixels. Each row of 8 pixels is read as bit-coded starting from memory
 location I; I value does not change after the execution of this instruction.
 As described above, VF is set to 1 if any screen pixels are flipped from set to
@@ -278,7 +284,6 @@ func OP_DXYN() {
 	startAddress := chip8.Cpu.IndexRegister
 	posX := uint8(chip8.Cpu.Registers[regXIndex])
 	posY := uint8(chip8.Cpu.Registers[regYIndex])
-	chip8.Cpu.Registers[0xF] = 0
 	//Iterate over sprite in memory
 	for i := uint8(0); i < uint8(pixelNum); i++ {
 		//8 pixel loaded
