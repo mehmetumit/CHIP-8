@@ -4,34 +4,30 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 	"log"
 )
-type KeyMap map[uint8]uint8
-//0x0 to 0xF -> store pressed or not
+
+// 0x0 to 0xF -> store pressed or not
 type KeyPad [16]bool
 
-// Map default layout to custom
-var keyMap = KeyMap{
-	'1': '1',
-	'2': '2',
-	'3': '3',
-	'C': '4',
-	'4': 'Q',
-	'5': 'W',
-	'6': 'E',
-	'D': 'R',
-	'7': 'A',
-	'8': 'S',
-	'9': 'D',
-	'E': 'F',
-	'A': 'Z',
-	'0': 'X',
-	'B': 'C',
-	'F': 'V',
+var keyMap = map[uint8]uint8{
+	'1': 0,
+	'2': 1,
+	'3': 2,
+	'4': 3,
+	'Q': 4,
+	'W': 5,
+	'E': 6,
+	'R': 7,
+	'A': 8,
+	'S': 9,
+	'D': 10,
+	'F': 11,
+	'Z': 12,
+	'X': 13,
+	'C': 14,
+	'V': 15,
 }
 
-func GetKeymap() KeyMap {
-	return keyMap
-}
-func EventHandler(quitEvent func()) {
+func EventHandler(quitEvent func(), keyPad *KeyPad) {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.(type) {
 		case *sdl.QuitEvent:
