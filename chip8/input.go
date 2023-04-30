@@ -13,29 +13,42 @@ var keyMap = map[uint8]uint8{
 	'2': 1,
 	'3': 2,
 	'4': 3,
-	'Q': 4,
-	'W': 5,
-	'E': 6,
-	'R': 7,
-	'A': 8,
-	'S': 9,
-	'D': 10,
-	'F': 11,
-	'Z': 12,
-	'X': 13,
-	'C': 14,
-	'V': 15,
+	'q': 4,
+	'w': 5,
+	'e': 6,
+	'r': 7,
+	'a': 8,
+	's': 9,
+	'd': 10,
+	'f': 11,
+	'z': 12,
+	'x': 13,
+	'c': 14,
+	'v': 15,
 }
 
 func EventHandler(quitEvent func(), keyPad *KeyPad) {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch event.(type) {
+		switch t:= event.(type) {
 		case *sdl.QuitEvent:
 			log.Print("Quit Event Handled")
 			Window.Destroy()
 			sdl.Quit()
 			quitEvent()
 			break
+		case *sdl.KeyboardEvent:
+			handleKeys(t.Keysym.Sym, keyPad, t.State)
 		}
 	}
+}
+func handleKeys(keyCode sdl.Keycode, keyPad *KeyPad, state uint8){
+	log.Println("Key:", keyCode)
+	if keyIndex, isExists := keyMap[uint8(keyCode)]; isExists{
+		if state == sdl.PRESSED{
+			keyPad[keyIndex] = true
+		}else if state == sdl.RELEASED{
+			keyPad[keyIndex] = false
+		}
+	}
+
 }

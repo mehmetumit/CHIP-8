@@ -564,7 +564,7 @@ func loop() {
 			log.Print("Running...")
 			cycle()
 			start = time.Now()
-			EventHandler(halt)
+			EventHandler(halt, &chip8.KeyPad)
 		}
 	}
 }
