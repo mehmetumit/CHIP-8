@@ -6,28 +6,28 @@ import (
 )
 
 // 0x0 to 0xF -> store pressed or not
-type KeyPad [16]bool
+type Keypad [16]bool
 
 var keyMap = map[uint8]uint8{
-	'1': 0,
-	'2': 1,
-	'3': 2,
-	'4': 3,
-	'q': 4,
-	'w': 5,
-	'e': 6,
-	'r': 7,
-	'a': 8,
-	's': 9,
-	'd': 10,
-	'f': 11,
-	'z': 12,
-	'x': 13,
-	'c': 14,
-	'v': 15,
+	'1': 0x1,
+	'2': 0x2,
+	'3': 0x3,
+	'4': 0xC,
+	'q': 0x4,
+	'w': 0x5,
+	'e': 0x6,
+	'r': 0xD,
+	'a': 0x7,
+	's': 0x8,
+	'd': 0x9,
+	'f': 0xE,
+	'z': 0xA,
+	'x': 0x0,
+	'c': 0xB,
+	'v': 0xF,
 }
 
-func EventHandler(quitEvent func(), keyPad *KeyPad) {
+func EventHandler(quitEvent func(), keyPad *Keypad) {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t:= event.(type) {
 		case *sdl.QuitEvent:
@@ -41,9 +41,9 @@ func EventHandler(quitEvent func(), keyPad *KeyPad) {
 		}
 	}
 }
-func handleKeys(keyCode sdl.Keycode, keyPad *KeyPad, state uint8){
-	log.Println("Key:", keyCode)
+func handleKeys(keyCode sdl.Keycode, keyPad *Keypad, state uint8){
 	if keyIndex, isExists := keyMap[uint8(keyCode)]; isExists{
+	log.Println("Key:", keyCode, "Index:",keyIndex)
 		if state == sdl.PRESSED{
 			keyPad[keyIndex] = true
 		}else if state == sdl.RELEASED{

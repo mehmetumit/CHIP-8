@@ -50,7 +50,7 @@ type CPU struct {
 type Chip8 struct {
 	Cpu        CPU
 	Display    Display
-	KeyPad     KeyPad
+	Keypad     Keypad
 	DelayTimer DelayTimer
 	SoundTimer SoundTimer
 	Speed      uint8
@@ -315,7 +315,7 @@ func OP_EX9E() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	key := uint8(chip8.Cpu.Registers[regXIndex])
 	//Key pressed
-	if chip8.KeyPad[key] {
+	if chip8.Keypad[key] {
 		chip8.Cpu.ProgramCounter += 2
 	}
 }
@@ -325,7 +325,7 @@ func OP_EXA1() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	key := uint8(chip8.Cpu.Registers[regXIndex])
 	//Key not pressed
-	if !chip8.KeyPad[key] {
+	if !chip8.Keypad[key] {
 		chip8.Cpu.ProgramCounter += 2
 	}
 }
@@ -341,7 +341,7 @@ func OP_FX0A() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	//Wait for key press
 	waitKeyPress := true
-	for i, key := range chip8.KeyPad {
+	for i, key := range chip8.Keypad {
 		if key {
 			chip8.Cpu.Registers[regXIndex] = Register(i)
 			waitKeyPress = false
@@ -564,7 +564,7 @@ func loop() {
 			log.Print("Running...")
 			cycle()
 			start = time.Now()
-			EventHandler(halt, &chip8.KeyPad)
+			EventHandler(halt, &chip8.Keypad)
 		}
 	}
 }
