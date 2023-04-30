@@ -7,6 +7,7 @@ import (
 
 // Monochrome display, 1 or 0
 // width -> 64, height -> 32
+// Width and height can be set differenlty on some interpreters
 const WIDTH = 64
 const HEIGHT = 32
 const DISPLAY_PADDING = 90
@@ -30,7 +31,7 @@ func init() {
 		log.Fatal("SDL initialization failed!", err)
 	}
 }
-func StartDisplay() {
+func StartDisplay(display *Display) {
 	var err error
 	Window, err = sdl.CreateWindow("CHIP-8", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		WindowWidth, WindowHeight, sdl.WINDOW_SHOWN)
@@ -42,7 +43,7 @@ func StartDisplay() {
 	if err != nil {
 		log.Fatal("Failed to create renderer!", err)
 	}
-	ClearRenderer()
+	ClearRenderer(display)
 
 }
 
@@ -52,13 +53,19 @@ func setDrawColor(color *sdl.Color) {
 func updateRenderer() {
 	Renderer.Present()
 }
-func ClearRenderer() {
+func ClearRenderer(display *Display) {
 	log.Print("Display cleaning...")
 	setDrawColor(&BackgroundColor)
-	Renderer.Clear()
+	for i := 0; i < len(display); i++ {
+		for j := 0; j < len(display[i]); j++ {
+			display[i][j] = 0
+		}
+	}
 	updateRenderer()
 }
 func RenderDisplay(display *Display) {
+	setDrawColor(&BackgroundColor)
+	Renderer.Clear()
 	for j := 0; j < HEIGHT; j++ {
 		for i := 0; i < WIDTH; i++ {
 			pixelState := uint8ToBool(display[i][j])

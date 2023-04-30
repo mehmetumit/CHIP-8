@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	chip8.Boot("./roms/Tetris.ch8", 12, 10)
+	chip8.Boot("./roms/Invaders.ch8", 12, 12)
 }

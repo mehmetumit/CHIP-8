@@ -89,7 +89,7 @@ var opcodeTable = map[Opcode](*func()){}
 
 // Clear the display
 func OP_00E0() {
-	ClearRenderer()
+	ClearRenderer(&chip8.Display)
 }
 
 // Return from subroutine
@@ -552,7 +552,7 @@ func Boot(romPath string, displayScale int32, speed uint8) {
 	chip8.Cpu.Opcode = Opcode(0)
 	chip8.Speed = speed
 	DisplayScale = displayScale
-	StartDisplay()
+	StartDisplay(&chip8.Display)
 	loop()
 }
 func loop() {
@@ -567,6 +567,14 @@ func loop() {
 	}
 }
 func cycle() {
+	log.Println("Delay Timer:", chip8.DelayTimer)
+	log.Println("Sound Timer:", chip8.SoundTimer)
+	if chip8.DelayTimer > 0 {
+		chip8.DelayTimer -= 1
+	}
+	if chip8.SoundTimer > 0 {
+		chip8.SoundTimer -= 1
+	}
 	fetch()
 	if chip8.Cpu.ProgramCounter+2 < ProgramCounter(len(chip8.Cpu.Memory)) {
 		chip8.Cpu.ProgramCounter += 2
@@ -574,11 +582,5 @@ func cycle() {
 		log.Fatal("Reached to end of memory!!!")
 	}
 	decodeAndExecute()
-	if chip8.DelayTimer > 0 {
-		chip8.DelayTimer -= 1
-	}
-	if chip8.SoundTimer > 0 {
-		chip8.SoundTimer -= 1
-	}
 	RenderDisplay(&chip8.Display)
 }
