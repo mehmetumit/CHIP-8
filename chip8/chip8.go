@@ -89,7 +89,7 @@ var opcodeTable = map[Opcode](*func()){}
 
 // Clear the display
 func OP_00E0() {
-	ClearDisplay()
+	ClearRenderer()
 }
 
 // Return from subroutine
@@ -263,17 +263,36 @@ func OP_CXNN() {
 
 // Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
 
-/*Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
+/*
+Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
 of N pixels. Each row of 8 pixels is read as bit-coded starting from memory
 location I; I value does not change after the execution of this instruction.
 As described above, VF is set to 1 if any screen pixels are flipped from set to
-unset when the sprite is drawn, and to 0 if that does not happen*/
+unset when the sprite is drawn, and to 0 if that does not happen
+*/
 func OP_DXYN() {
+	log.Print("Draw sprite instruction called!")
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	regYIndex := (chip8.Cpu.Opcode & 0x00F0) >> 4
 	pixelNum := chip8.Cpu.Opcode & 0x000F
-	//TODO
-	Draw(uint8(chip8.Cpu.Registers[regXIndex]), uint8(chip8.Cpu.Registers[regYIndex]), uint8(pixelNum))
+	startAddress := chip8.Cpu.IndexRegister
+	posX := uint8(chip8.Cpu.Registers[regXIndex])
+	posY := uint8(chip8.Cpu.Registers[regYIndex])
+	chip8.Cpu.Registers[0xF] = 0
+	//Iterate over sprite in memory
+	for i := uint8(0); i < uint8(pixelNum); i++ {
+		//8 pixel loaded
+		pixelBits := chip8.Cpu.Memory[uint16(startAddress)+uint16(i)]
+		log.Printf("Pixel bits: 0x%X", pixelBits)
+		for j := uint8(0); j < 8; j++ {
+			//
+			bit := uint8((pixelBits & 0x80) >> 7)
+			chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] = bit
+			pixelBits = pixelBits << 1
+			log.Printf("Bit: 0x%X", bit)
+			log.Printf("Pixel bits in loop: 0x%X", pixelBits)
+		}
+	}
 }
 
 // Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
@@ -386,7 +405,7 @@ func OP_FX65() {
 func fetch() {
 	//01010101 00000000 | 00000000 10101010 -> Opcodes are 2 byte each
 	chip8.Cpu.Opcode = Opcode(uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter])<<8 | uint16(chip8.Cpu.Memory[chip8.Cpu.ProgramCounter+1]))
-	log.Print("Fetched Opcode:", chip8.Cpu.Opcode)
+	log.Printf("Fetched Opcode: 0x%X", chip8.Cpu.Opcode)
 }
 func decodeAndExecute() {
 	opcode := chip8.Cpu.Opcode
@@ -510,7 +529,7 @@ func loadFonts() {
 	log.Print("Fontset loaded successfully!")
 
 }
-func Boot(romPath string, displayScale uint8, speed uint8) {
+func Boot(romPath string, displayScale int32, speed uint8) {
 	log.SetFlags(4)
 	err := loadRom(romPath)
 	if err != nil {
@@ -549,4 +568,5 @@ func cycle() {
 	if chip8.SoundTimer > 0 {
 		chip8.SoundTimer -= 1
 	}
+	RenderDisplay(&chip8.Display)
 }

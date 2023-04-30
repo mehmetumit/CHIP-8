@@ -9,17 +9,19 @@ import (
 // width -> 64, height -> 32
 const WIDTH = 64
 const HEIGHT = 32
+const DISPLAY_PADDING = 90
 
-type Display [WIDTH * HEIGHT]uint8
+type Display [WIDTH][HEIGHT]uint8
 
-var DisplayScale uint8
+var DisplayScale int32
 
 var (
-	Window       *sdl.Window
-	Surface      *sdl.Surface
-	WindowWidth  int32 = 800
-	WindowHeight int32 = 600
-	PixelColor         = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	Window          *sdl.Window
+	Renderer        *sdl.Renderer
+	WindowWidth     int32 = 1024
+	WindowHeight    int32 = 768
+	PixelColor            = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	BackgroundColor       = sdl.Color{R: 0, G: 0, B: 0, A: 255}
 )
 
 func init() {
@@ -36,21 +38,49 @@ func StartDisplay() {
 		log.Fatal("Window creation failed!", err)
 	}
 
-	Surface, err = Window.GetSurface()
+	Renderer, err = sdl.CreateRenderer(Window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed to create renderer!", err)
 	}
-	Surface.FillRect(nil, 0)
-
-	rect := sdl.Rect{X: 0, Y: 0, W: 200, H: 200}
-	pixel := sdl.MapRGBA(Surface.Format, PixelColor.R, PixelColor.G, PixelColor.B, PixelColor.A)
-	Surface.FillRect(&rect, pixel)
-	Window.UpdateSurface()
-}
-
-func ClearDisplay() {
+	ClearRenderer()
 
 }
-func Draw(x uint8, y uint8, n uint8) {
 
+func setDrawColor(color *sdl.Color) {
+	Renderer.SetDrawColor(color.R, color.B, color.G, color.A)
+}
+func updateRenderer() {
+	Renderer.Present()
+}
+func ClearRenderer() {
+	log.Print("Display cleaning...")
+	setDrawColor(&BackgroundColor)
+	Renderer.Clear()
+	updateRenderer()
+}
+func RenderDisplay(display *Display) {
+	for j := 0; j < HEIGHT; j++ {
+		for i := 0; i < WIDTH; i++ {
+			pixelState := uint8ToBool(display[i][j])
+			DrawPixel(int32(i), int32(j), pixelState)
+		}
+	}
+	updateRenderer()
+}
+func uint8ToBool(num uint8) bool {
+	if num == 0x1 {
+		return true
+	} else {
+		return false
+	}
+
+}
+func DrawPixel(x int32, y int32, isPixelOn bool) {
+	if isPixelOn {
+		setDrawColor(&PixelColor)
+	} else {
+		setDrawColor(&BackgroundColor)
+	}
+	pixelRect := sdl.Rect{X: DISPLAY_PADDING + int32(x*DisplayScale), Y: DISPLAY_PADDING + int32(y*DisplayScale), W: int32(DisplayScale), H: int32(DisplayScale)}
+	Renderer.FillRect(&pixelRect)
 }
