@@ -273,8 +273,9 @@ func OP_CXNN() {
 Draw a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height
 of N pixels. Each row of 8 pixels is read as bit-coded starting from memory
 location I; I value does not change after the execution of this instruction.
-As described above, VF is set to 1 if any screen pixels are flipped from set to
-unset when the sprite is drawn, and to 0 if that does not happen
+Sprite pixels are XOR'd with corresponding screen pixels. The carry flag (VF) is
+set to 1 if any screen pixels and sprite pixels are on at the same position otherwise
+set to 0. This is used for collision detection.
 */
 func OP_DXYN() {
 	log.Print("Draw sprite instruction called!")
@@ -284,28 +285,29 @@ func OP_DXYN() {
 	startAddress := chip8.Cpu.IndexRegister
 	posX := uint8(chip8.Cpu.Registers[regXIndex])
 	posY := uint8(chip8.Cpu.Registers[regYIndex])
-	isFlipped := uint8(0)
+	isCollided := uint8(0)
 	chip8.Cpu.Registers[0xF] = 0
-	//Iterate over sprite in memory
+	//Iterate over sprite in the memory
 	for i := uint8(0); i < uint8(pixelNum); i++ {
-		//8 pixel loaded
+		//8 pixels are loaded
 		pixelBits := chip8.Cpu.Memory[uint16(startAddress)+uint16(i)]
 		log.Printf("Pixel bits: 0x%X", pixelBits)
 		for j := uint8(0); j < 8; j++ {
 			//Get left most bit
 			bit := uint8((pixelBits & 0x80) >> 7)
-			//Pixel bit flipped
-			if bit^chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] == 1 {
-				isFlipped = 1
+			//Collision
+			if bit == 1 && chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] == 1 {
+				isCollided = 1
 			}
-			//Prevent overflow
-			chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] = bit
+			//Limit indicies to prevent overflow
+			chip8.Display[(posX+j)%WIDTH][(posY+i)%HEIGHT] ^= bit
 			pixelBits = pixelBits << 1
 			log.Printf("Bit: 0x%X", bit)
 			log.Printf("Pixel bits in loop: 0x%X", pixelBits)
 		}
 	}
-	chip8.Cpu.Registers[0xF] = Register(isFlipped)
+	//Set the flip flag
+	chip8.Cpu.Registers[0xF] = Register(isCollided)
 }
 
 // Skip the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
