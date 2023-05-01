@@ -1,9 +1,38 @@
 # CHIP-8
 * CHIP-8 emulator written in go
-## References
-* https://en.wikipedia.org/wiki/CHIP-8
-* https://www.cs.columbia.edu/~sedwards/classes/2016/4840-spring/designs/Chip8.pdf
-* https://github.com/corax89/chip8-test-rom
+## Demo
+![IBMLogo](/assets/IBMLogo.png)
+![Test](/assets/Test.png)
+![Pong](/assets/Pong.png)
+![Tetris](/assets/Tetris.png)
+## Usage
+```
+Usage of ./CHIP-8:
+  -path string
+        The file path of rom (default "./roms/Instruction-Test.ch8")
+  -scale int
+        The display scale (default 12)
+  -speed uint
+        The emulation speed (default 3)
+```
+### Run
+```
+# Without creating executable in current folder
+# It can take some time on first run because of the sdl2 package
+$ go run . -path <./roms/Pong.ch8> -speed <3> -scale <12>
+# Using executable file which is created after build operation
+$ ./CHIP-8 -path <./roms/Pong.ch8> -speed <3> -scale <12>
+```
+### Build
+```
+# Print the build process using flags
+# It can take some time on first build because of the sdl2 package
+$ go build -x -v
+```
+## Dependencies
+* `Go`
+* `SDL2(go-sdl2)`
+* `cgo`
 ## Opcodes
 ```
 00E0 00EE (0NNN)-> not necessary for most roms
@@ -23,23 +52,15 @@ DXYN
 EX9E EXA1
 FX07 FX0A FX15 FX18 FX1E FX29 FX33 FX55 FX65
 ```
-## Custom Keymap
+## Keymaps
 ```
-Default     Custom
-  '1'   ->   '1',
-  '2'   ->   '2',
-  '3'   ->   '3',
-  'C'   ->   '4',
-  '4'   ->   'Q',
-  '5'   ->   'W',
-  '6'   ->   'E',
-  'D'   ->   'R',
-  '7'   ->   'A',
-  '8'   ->   'S',
-  '9'   ->   'D',
-  'E'   ->   'F',
-  'A'   ->   'Z',
-  '0'   ->   'X',
-  'B'   ->   'C',
-  'F'   ->   'V'
+Default        Custom
+1 2 3 C        1 2 3 4
+4 5 6 D   ->   Q W E R
+7 8 9 E        A S D F
+A 0 B F        Z X C V
 ```
+## References
+* https://en.wikipedia.org/wiki/CHIP-8
+* https://www.cs.columbia.edu/~sedwards/classes/2016/4840-spring/designs/Chip8.pdf
+* https://github.com/corax89/chip8-test-rom
