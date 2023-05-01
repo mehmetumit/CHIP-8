@@ -33,6 +33,7 @@ func EventHandler(quitEvent func(), keyPad *Keypad) {
 		case *sdl.QuitEvent:
 			log.Print("Quit Event Handled")
 			Window.Destroy()
+			ClouseAudio()
 			sdl.Quit()
 			quitEvent()
 			break

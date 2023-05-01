@@ -364,6 +364,7 @@ func OP_FX15() {
 func OP_FX18() {
 	regXIndex := (chip8.Cpu.Opcode & 0x0F00) >> 8
 	chip8.SoundTimer = SoundTimer(chip8.Cpu.Registers[regXIndex])
+	PlayAudio()
 }
 
 // Add VX to I. VF is not affected
@@ -576,6 +577,9 @@ func cycle() {
 	}
 	if chip8.SoundTimer > 0 {
 		chip8.SoundTimer -= 1
+		if chip8.SoundTimer <= 0{
+			PauseAudio()
+		}
 	}
 	fetch()
 	if chip8.Cpu.ProgramCounter+2 < ProgramCounter(len(chip8.Cpu.Memory)) {
