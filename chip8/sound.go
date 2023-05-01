@@ -47,7 +47,6 @@ func ClouseAudio() {
 func PlayAudio() {
 	log.Print("Playing audio...")
 	// Start playback audio of device
-	sdl.PauseAudioDevice(dev, true)
 	sdl.PauseAudioDevice(dev, false)
 }
 func PauseAudio() {

@@ -2,16 +2,21 @@ package main
 
 import (
 	"flag"
+	"fmt"
+
 	"github.com/mehmetumit/CHIP-8/chip8"
 )
 
 func main() {
 	var romPath string
-	var displayScale int32
-	var speed uint8
+	var displayScale int
+	var speed uint
 	flag.StringVar(&romPath, "path", "./roms/Instruction-Test.ch8", "The file path of rom")
-	speed = uint8(*flag.Uint("speed", 3, "The emulation speed"))
-	displayScale = int32(*flag.Int("scale", 12, "The display scale"))
+	flag.UintVar(&speed, "speed", 3, "The emulation speed")
+	flag.IntVar(&displayScale, "scale", 12, "The display scale")
+
 	flag.Parse()
-	chip8.Boot(romPath, displayScale, speed)
+	fmt.Println(displayScale)
+	fmt.Println(speed)
+	chip8.Boot(romPath, int32(displayScale), uint8(speed))
 }
